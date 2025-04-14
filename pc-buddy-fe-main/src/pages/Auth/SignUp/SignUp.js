@@ -2,32 +2,92 @@ import React, { useState } from "react";
 import Lottie from "react-lottie-player";
 import lottie from "../../../assets/json/signin.json";
 import Layout from "../../../layouts/ArticleLayout";
-import { Button, Form, Input, Switch } from "antd";
+import { Button, Form, Input, Switch, message } from "antd";
 import { useNavigate } from "react-router-dom";
 import RoutePaths from "../../../routes/types";
+import { handleError, handleSuccess } from "../../../helpers/toasts";
+import { handleInputChange } from "../../../helpers/handleInputs";
+import API from "../../../api/server";
 
 const SignUp = () => {
   const navigate = useNavigate();
   const [select, setSelect] = useState(false);
-
+  const [messageApi, contextHolder] = message.useMessage();
+  const [form] = Form.useForm();
   const [state, setState] = useState({
     name: "",
+    email: "",
     password: "",
+    cpassword: "",
   });
 
+  // console.log(state);
+
   const handleReset = () => {
-    // form.resetFields();
+    form.resetFields();
     setState({
       name: "",
+      email: "",
       password: "",
+      cpassword: "",
+      admin_key: "",
     });
   };
 
-  const handleFinish = () => {};
+  const handleFinish = async () => {
+    if (state.password === state.cpassword) {
+      try {
+        const { name, email, password } = state;
+        // console.log(name, email, password);
+        const res = await API.post("/auth/signup", {
+          name,
+          email,
+          password,
+        });
+        // console.log(res);
+        const { data } = res.data;
+        handleSuccess(messageApi, data);
+        handleReset();
+        setTimeout(() => {
+          navigate(RoutePaths.signin);
+        }, 1500);
+      } catch (err) {
+        handleError(messageApi, err.response?.data?.message || "API Error");
+        // console.log(err);
+      }
+    } else handleError(messageApi, "Passwords do not match!");
+  };
+
+  const handleAdminFinish = async () => {
+    if (state.password === state.cpassword) {
+      try {
+        const { name, email, password, admin_key } = state;
+        // console.log(name, email, password, admin_key);
+        const res = await API.post("/auth/admin/signup", {
+          name,
+          email,
+          password,
+          admin_key,
+        });
+        // console.log(res);
+        const { data } = res.data;
+        handleSuccess(messageApi, data);
+        handleReset();
+
+        setTimeout(() => {
+          navigate(RoutePaths.signin);
+        }, 1500);
+      } catch (err) {
+        handleError(messageApi, err.response?.data?.message || "API Error");
+        // console.log(err);
+      }
+    } else handleError(messageApi, "Passwords do not match!");
+  };
 
   return (
     <Layout title="Signup" bool>
       {/* <ToastContainer /> */}
+      {contextHolder}
       <div>
         <div className="py-6 flex">
           <div className="flex flex-grow bg-white rounded-lg shadow-all-rounded overflow-hidden my-auto mx-auto max-w-sm lg:max-w-4xl">
@@ -43,17 +103,19 @@ const SignUp = () => {
                   defaultChecked={select}
                   onChange={(e) => setSelect(e)}
                 />
-                <p className="mt-1">{`Sign in as ${select ? "Admin" : "Client"}`}</p>
+                <p className="mt-1">{`Sign in as ${
+                  select ? "Admin" : "Client"
+                }`}</p>
               </div>
               <h2 className="text-4xl font-semibold text-primary text-center uppercase my-5">
                 Sign Up
               </h2>
               <Form
                 // {...layout}
-                // form={form}
+                form={form}
                 name="control-hooks"
                 layout="vertical"
-                onFinish={handleFinish}
+                onFinish={() => (select ? handleAdminFinish() : handleFinish())}
                 // style={{
                 //   maxWidth: 600,
                 // }}
@@ -67,14 +129,24 @@ const SignUp = () => {
                     },
                   ]}
                 >
-                  <Input className="p-2.5" />
+                  <Input
+                    className="p-2.5"
+                    value={state.name}
+                    name="name"
+                    onChange={(e) => handleInputChange(e, setState)}
+                  />
                 </Form.Item>
                 <Form.Item
                   name="email"
                   label="Email"
                   rules={[{ type: "email", required: true }]}
                 >
-                  <Input className="p-2.5" />
+                  <Input
+                    className="p-2.5"
+                    value={state.email}
+                    name="email"
+                    onChange={(e) => handleInputChange(e, setState)}
+                  />
                 </Form.Item>
                 <Form.Item
                   label="Password"
@@ -86,7 +158,12 @@ const SignUp = () => {
                     },
                   ]}
                 >
-                  <Input.Password className="p-2.5" />
+                  <Input.Password
+                    className="p-2.5"
+                    value={state.password}
+                    name="password"
+                    onChange={(e) => handleInputChange(e, setState)}
+                  />
                 </Form.Item>
                 <Form.Item
                   label="Confirm Password"
@@ -98,7 +175,12 @@ const SignUp = () => {
                     },
                   ]}
                 >
-                  <Input.Password className="p-2.5" />
+                  <Input.Password
+                    className="p-2.5"
+                    value={state.cpassword}
+                    name="cpassword"
+                    onChange={(e) => handleInputChange(e, setState)}
+                  />
                 </Form.Item>
                 {select && (
                   <Form.Item
@@ -110,7 +192,11 @@ const SignUp = () => {
                       },
                     ]}
                   >
-                    <Input className="p-2.5" />
+                    <Input
+                      className="p-2.5"
+                      name="admin_key"
+                      onChange={(e) => handleInputChange(e, setState)}
+                    />
                   </Form.Item>
                 )}
                 <Form.Item>

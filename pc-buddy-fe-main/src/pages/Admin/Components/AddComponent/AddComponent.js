@@ -1,20 +1,50 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Layout from "../../../../layouts/AdminLayout";
 import Lottie from "react-lottie-player";
 import lottie from "../../../../assets/json/add-component-2.json";
-import { Button, Divider, Form, Select } from "antd";
+import { Button, Divider, Form, Select, message } from "antd";
 import { setAdminKey } from "../../../../redux/features/sidebarSlice";
 import { useDispatch } from "react-redux";
-import SelectComponentType from "../../../../constants/SelectComponentType";
+import ComponentType, {
+  ComponentsIndex,
+} from "../../../../constants/Components";
 import Processor from "../Processor/Processor";
-import ProcessorCooler from "../ProcessorCooler/ProcessorCooler";
+import CPUCooler from "../CPUCooler/CPUCooler";
+import Motherboard from "../Motherboard/Motherboard";
+import GPU from "../GPU/GPU";
+import PSU from "../PSU/PSU";
+import RAM from "../RAM/RAM";
+import Storage from "../Storage/Storage";
+import { addProcessor } from "../../../../api/services/Processor";
+import { handleError, handleSuccess } from "../../../../helpers/toasts";
+import { addCPUCooler } from "../../../../api/services/CPUCooler";
+import { addMotherboard } from "../../../../api/services/Motherboard";
+import { addGPU } from "../../../../api/services/GPU";
+import { addPSU } from "../../../../api/services/PSU";
+import { addRAM } from "../../../../api/services/RAM";
+import { addStorage } from "../../../../api/services/Storage";
+import { addComponent } from "../../../../api/services/Components";
 
 const AddComponent = () => {
   const dispatch = useDispatch();
-  const componentType = useMemo(() => SelectComponentType, []);
   const [select, setSelect] = useState();
+  const [form] = Form.useForm();
+  const [messageApi, contextHolder] = message.useMessage();
 
-  // console.log(select)
+  // console.log(select);
+
+  const onFinish = async (values) => {
+    // console.log(values);
+    try {
+      const res = await addComponent(select, values);
+      handleSuccess(messageApi, res?.data || "Component added successfully!");
+    } catch (error) {
+      // console.error("Error", error);
+      handleError(messageApi, error || "API Error");
+    } finally {
+      form.resetFields();
+    }
+  };
 
   useEffect(() => {
     dispatch(setAdminKey(["2"]));
@@ -22,6 +52,7 @@ const AddComponent = () => {
 
   return (
     <Layout title="Add Component">
+      {contextHolder}
       {/* <ToastContainer /> */}
       <div className="py-6 flex">
         <div
@@ -49,6 +80,8 @@ const AddComponent = () => {
             <Form
               name="control-hooks"
               layout="vertical"
+              form={form}
+              onFinish={onFinish}
               className={`${select && "grid lg:grid-cols-2 gap-4"}`}
             >
               <Form.Item
@@ -66,17 +99,27 @@ const AddComponent = () => {
                   onChange={(e) => setSelect(e)}
                   allowClear
                 >
-                  {componentType?.map((type, i) => (
+                  {ComponentType?.map((type, i) => (
                     <Select.Option key={i} value={type?.toLowerCase()}>
                       {type}
                     </Select.Option>
                   ))}
                 </Select>
               </Form.Item>
-              {select === "processor" ? (
+              {select === ComponentsIndex.PROCESSOR ? (
                 <Processor />
-              ) : select === "processor cooler" ? (
-                <ProcessorCooler />
+              ) : select === ComponentsIndex.CPU_COOLER ? (
+                <CPUCooler />
+              ) : select === ComponentsIndex.MOTHERBOARD ? (
+                <Motherboard />
+              ) : select === ComponentsIndex.GPU ? (
+                <GPU />
+              ) : select === ComponentsIndex.PSU ? (
+                <PSU />
+              ) : select === ComponentsIndex.RAM ? (
+                <RAM />
+              ) : select === ComponentsIndex.STORAGE ? (
+                <Storage />
               ) : null}
               <Divider className="lg:col-span-2" />
 

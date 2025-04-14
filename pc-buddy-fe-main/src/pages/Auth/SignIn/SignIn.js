@@ -2,32 +2,83 @@ import React, { useState } from "react";
 import Lottie from "react-lottie-player";
 import lottie from "../../../assets/json/signin.json";
 import Layout from "../../../layouts/ArticleLayout";
-import { Button, Form, Input, Switch } from "antd";
+import { Button, Form, Input, Switch, message } from "antd";
 import { useNavigate } from "react-router-dom";
 import RoutePaths from "../../../routes/types";
+import API from "../../../api/server";
+import { handleError, handleSuccess } from "../../../helpers/toasts";
+import { handleInputChange } from "../../../helpers/handleInputs";
 
 const SignIn = () => {
   const navigate = useNavigate();
   const [select, setSelect] = useState(false);
-
+  const [messageApi, contextHolder] = message.useMessage();
+  const [loader, setLoader] = useState(false);
+  const [form] = Form.useForm();
   const [state, setState] = useState({
     email: "",
     password: "",
   });
 
   const handleReset = () => {
-    // form.resetFields();
+    form.resetFields();
     setState({
       email: "",
       password: "",
     });
   };
 
-  const handleFinish = () => {};
+  const handleFinish = async () => {
+    setLoader(true);
+    try {
+      const { email, password } = state;
+      // console.log(email, password);
+      const res = await API.post("/auth/signin", {
+        email,
+        password,
+      });
+      console.log(res);
+      // const { data } = res.data;
+      handleSuccess(messageApi, "User has been Signed In!");
+      handleReset();
+      setTimeout(() => {
+        navigate(RoutePaths.home);
+      }, 1500);
+    } catch (err) {
+      // console.error(err);
+      handleError(messageApi, err.response?.data?.message || "API Error");
+    } finally {
+      setLoader(false);
+    }
+  };
+
+  const handleAdminFinish = async () => {
+    setLoader(true);
+    try {
+      const { email, password } = state;
+      // console.log(email, password);
+      const res = await API.post("/auth/admin/signin", {
+        email,
+        password,
+      });
+      console.log(res);
+      // const { data } = res.data;
+      handleSuccess(messageApi, "Admin has been Signed In!");
+      handleReset();
+      setTimeout(() => {
+        navigate(RoutePaths.admin);
+      }, 1500);
+    } catch (err) {
+      console.error(err);
+      handleError(messageApi, err.response?.data?.message || "API Error");
+    } finally {
+      setLoader(false);
+    }
+  };
 
   return (
     <Layout title="Signin" bool>
-      {/* <ToastContainer /> */}
+      {contextHolder}
       <div>
         <div className="py-6 flex">
           <div className="flex flex-grow bg-white rounded-lg shadow-all-rounded overflow-hidden my-auto mx-auto max-w-sm lg:max-w-4xl">
@@ -52,10 +103,10 @@ const SignIn = () => {
               </h2>
               <Form
                 // {...layout}
-                // form={form}
+                form={form}
                 name="control-hooks"
                 layout="vertical"
-                onFinish={handleFinish}
+                onFinish={() => (select ? handleAdminFinish() : handleFinish())}
                 // style={{
                 //   maxWidth: 600,
                 // }}
@@ -70,7 +121,11 @@ const SignIn = () => {
                     },
                   ]}
                 >
-                  <Input className="p-2.5" />
+                  <Input
+                    className="p-2.5"
+                    name="email"
+                    onChange={(e) => handleInputChange(e, setState)}
+                  />
                 </Form.Item>
                 <Form.Item
                   label="Password"
@@ -82,7 +137,11 @@ const SignIn = () => {
                     },
                   ]}
                 >
-                  <Input.Password className="p-2.5" />
+                  <Input.Password
+                    className="p-2.5"
+                    name="password"
+                    onChange={(e) => handleInputChange(e, setState)}
+                  />
                 </Form.Item>
                 <div className="my-4">
                   <div className="flex justify-end">
@@ -100,6 +159,7 @@ const SignIn = () => {
                       className="bg-main flex-grow"
                       type="primary"
                       htmlType="submit"
+                      loading={loader}
                     >
                       Login Account
                     </Button>

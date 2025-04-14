@@ -1,50 +1,96 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Layout from "../../../../layouts/AdminLayout";
 import Lottie from "react-lottie-player";
 import lottie from "../../../../assets/json/add-component-2.json";
-import { Button, Divider, Form, Select } from "antd";
+import { Button, Divider, Form, Select, message } from "antd";
 import {
   getAdminKey,
   setAdminKey,
 } from "../../../../redux/features/sidebarSlice";
 import { useDispatch, useSelector } from "react-redux";
-import SelectComponentType from "../../../../constants/SelectComponentType";
+import ComponentType, {
+  ComponentsIndex,
+} from "../../../../constants/Components";
 import Processor from "../Processor/Processor";
-import ProcessorCooler from "../ProcessorCooler/ProcessorCooler";
+import { handleError, handleSuccess } from "../../../../helpers/toasts";
+import {
+  getAllComponents,
+  updateComponent,
+} from "../../../../api/services/Components";
+import CPUCooler from "../CPUCooler/CPUCooler";
+import Motherboard from "../Motherboard/Motherboard";
+import GPU from "../GPU/GPU";
+import PSU from "../PSU/PSU";
+import RAM from "../RAM/RAM";
+import Storage from "../Storage/Storage";
 
 const EditComponent = () => {
   const dispatch = useDispatch();
   const key = useSelector(getAdminKey);
-  const componentType = useMemo(() => SelectComponentType, []);
   const [select, setSelect] = useState();
-  const [comp, setComp] = useState();
+  const [messageApi, contextHolder] = message.useMessage();
+  const [componentsData, setComponentsData] = useState([]);
+  const [componentData, setComponentData] = useState(null);
+  const [form] = Form.useForm();
 
   useEffect(() => {
     dispatch(setAdminKey(["3"]));
   }, [dispatch]);
 
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await getAllComponents(select);
+        setComponentsData(response?.data ?? []);
+      } catch (error) {
+        handleError(messageApi, error || "API Error");
+      }
+    };
+    if (select) {
+      fetchData();
+    }
+  }, [select]);
+
+  const onFinish = async (values) => {
+    try {
+      const res = await updateComponent(select, componentData?._id, values);
+      handleSuccess(messageApi, res?.data || "Component updated successfully!");
+      setSelect();
+      setComponentsData([]);
+      setComponentData();
+    } catch (error) {
+      handleError(messageApi, error || "API Error");
+    } finally {
+      form.resetFields();
+    }
+  };
+
   return (
     <Layout title="Add Component" keyo={key}>
-      {/* <ToastContainer /> */}
+      {contextHolder}
       <div className="py-6 flex">
         <div
           className={`flex ${
-            select && comp && "flex-col"
+            select && componentData && "flex-col"
           } flex-grow bg-white rounded-lg shadow-all-rounded overflow-hidden my-auto mx-auto max-w-sm lg:max-w-4xl`}
         >
           <div
             className={`hidden lg:flex ${
-              select && comp ? "" : "lg:w-1/2"
+              select && componentData ? "" : "lg:w-1/2"
             }  bg-cover bg-blue-900 backdrop-blur-md justify-center`}
           >
-            {/* <Lottie loop animationData={lottie} play /> */}
             <Lottie
               animationData={lottie}
               play
-              className={`${select && comp && "h-72"}`}
+              className={`${select && componentData && "h-72"}`}
             />
           </div>
-          <div className={`w-full p-8 ${select && comp ? "" : "lg:w-1/2"}`}>
+          <div
+            className={`w-full p-8 ${
+              select && componentData ? "" : "lg:w-1/2"
+            }`}
+          >
             <h2 className="text-4xl font-semibold text-primary text-center uppercase my-5">
               Edit Component
             </h2>
@@ -52,7 +98,11 @@ const EditComponent = () => {
             <Form
               name="control-hooks"
               layout="vertical"
-              className={`${select && comp && "grid lg:grid-cols-2 gap-4"}`}
+              form={form}
+              onFinish={onFinish}
+              className={`${
+                select && componentData && "grid lg:grid-cols-2 gap-4"
+              }`}
             >
               <Form.Item
                 label="Component Type"
@@ -66,49 +116,70 @@ const EditComponent = () => {
               >
                 <Select
                   placeholder="Select a type"
-                  onChange={(e) => setSelect(e)}
+                  onChange={(e) => {
+                    setSelect(e);
+                    setComponentsData([]);
+                    setComponentData(null);
+                    // setComp();
+                  }}
                   allowClear
                 >
-                  {componentType?.map((type, i) => (
+                  {ComponentType?.map((type, i) => (
                     <Select.Option key={i} value={type?.toLowerCase()}>
                       {type}
                     </Select.Option>
                   ))}
                 </Select>
               </Form.Item>
-              <Form.Item
-                label="Select Component"
-                name="select component"
-                className="w-full"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
-              >
-                <Select
-                  placeholder="Select a component"
-                  onChange={(e) => setComp(e)}
-                  allowClear
+              {select && (
+                <Form.Item
+                  label="Select Component"
+                  name="select component"
+                  className="w-full"
+                  rules={[
+                    {
+                      required: true,
+                    },
+                  ]}
                 >
-                  <Select.Option value="Component 1">Component 1</Select.Option>
-                  <Select.Option value="Component 2">Component 2</Select.Option>
-                  <Select.Option value="Component 3">Component 3</Select.Option>
-                  <Select.Option value="Component 4">Component 4</Select.Option>
-                  <Select.Option value="Component 5">Component 5</Select.Option>
-                  <Select.Option value="Component 6">Component 6</Select.Option>
-                  <Select.Option value="Component 7">Component 7</Select.Option>
-                </Select>
-              </Form.Item>
-              {comp &&
-                (select === "processor" ? (
-                  <Processor />
-                ) : select === "processor cooler" ? (
-                  <ProcessorCooler />
+                  <Select
+                    placeholder="Select a component"
+                    onChange={(e) => {
+                      // setComp(e);
+                      setComponentData(
+                        componentsData?.find((data) => data.name === e)
+                      );
+                    }}
+                    allowClear
+                    value={componentData?.name}
+                  >
+                    {componentsData?.map((data, i) => (
+                      <Select.Option key={i} value={data?.name}>
+                        {data?.name}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              )}
+              {componentData &&
+                (select === ComponentsIndex.PROCESSOR ? (
+                  <Processor data={componentData} />
+                ) : select === ComponentsIndex.CPU_COOLER ? (
+                  <CPUCooler data={componentData} />
+                ) : select === ComponentsIndex.MOTHERBOARD ? (
+                  <Motherboard data={componentData} />
+                ) : select === ComponentsIndex.GPU ? (
+                  <GPU data={componentData} />
+                ) : select === ComponentsIndex.PSU ? (
+                  <PSU data={componentData} />
+                ) : select === ComponentsIndex.RAM ? (
+                  <RAM data={componentData} />
+                ) : select?.split(" ")[0] === ComponentsIndex.STORAGE ? (
+                  <Storage data={componentData} />
                 ) : null)}
               <Divider className="lg:col-span-2" />
 
-              {select && comp && (
+              {select && componentData && (
                 <Form.Item className="lg:col-span-2">
                   <div className="flex w-full justify-center mx-auto max-w-md space-x-3">
                     <Button

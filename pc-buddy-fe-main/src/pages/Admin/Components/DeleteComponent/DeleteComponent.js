@@ -1,24 +1,57 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Layout from "../../../../layouts/AdminLayout";
 import Lottie from "react-lottie-player";
 import lottie from "../../../../assets/json/add-component-2.json";
-import { Button, Divider, Form, Select } from "antd";
+import { Button, Divider, Form, Select, message } from "antd";
 import { setAdminKey } from "../../../../redux/features/sidebarSlice";
 import { useDispatch } from "react-redux";
-import SelectComponentType from "../../../../constants/SelectComponentType";
+import ComponentType from "../../../../constants/Components";
+import { getAllComponents, removeComponent } from "../../../../api/services/Components";
+import { handleError, handleSuccess } from "../../../../helpers/toasts";
 
 const DeleteComponent = () => {
   const dispatch = useDispatch();
-  const componentType = useMemo(() => SelectComponentType, []);
   const [select, setSelect] = useState();
-  const [comp, setComp] = useState();
+  const [components, setComponents] = useState([]);
+  const [component, setComponent] = useState();
+  const [messageApi, contextHolder] = message.useMessage();
+  const [form] = Form.useForm();
+
+  const onFinish = async () => {
+    try {
+      const res = await removeComponent(select, component?._id);
+      handleSuccess(messageApi, res?.data || "Component removed successfully!");
+      setSelect();
+      setComponents([]);
+      setComponent();
+    } catch (error) {
+      handleError(messageApi, error || "API Error");
+    } finally {
+      form.resetFields();
+    }
+  };
 
   useEffect(() => {
     dispatch(setAdminKey(["4"]));
   }, [dispatch]);
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await getAllComponents(select);
+        setComponents(response?.data ?? []);
+      } catch (error) {
+        handleError(messageApi, error || "API Error");
+      }
+    };
+    if (select) {
+      fetchData();
+    }
+  }, [select]);
+
   return (
     <Layout title="Add Component">
+      {contextHolder}
       {/* <ToastContainer /> */}
       <div className="py-6 flex">
         <div className="flex flex-grow bg-white rounded-lg shadow-all-rounded overflow-hidden my-auto mx-auto max-w-sm lg:max-w-4xl">
@@ -30,7 +63,7 @@ const DeleteComponent = () => {
               Delete Component
             </h2>
 
-            <Form name="control-hooks" layout="vertical">
+            <Form name="control-hooks" layout="vertical" form={form} onFinish={onFinish}>
               <Form.Item
                 label="Component Type"
                 name="component type"
@@ -46,50 +79,56 @@ const DeleteComponent = () => {
                   onChange={(e) => setSelect(e)}
                   allowClear
                 >
-                  {componentType?.map((type, i) => (
+                  {ComponentType?.map((type, i) => (
                     <Select.Option key={i} value={type?.toLowerCase()}>
                       {type}
                     </Select.Option>
                   ))}
                 </Select>
               </Form.Item>
-              <Form.Item
-                label="Select Component"
-                name="select component"
-                className="w-full"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
-              >
-                <Select
-                  placeholder="Select a component"
-                  onChange={(e) => setComp(e)}
-                  allowClear
+              {select && (
+                <Form.Item
+                  label="Select Component"
+                  name="select component"
+                  className="w-full"
+                  rules={[
+                    {
+                      required: true,
+                    },
+                  ]}
                 >
-                  <Select.Option value="Component 1">Component 1</Select.Option>
-                  <Select.Option value="Component 2">Component 2</Select.Option>
-                  <Select.Option value="Component 3">Component 3</Select.Option>
-                  <Select.Option value="Component 4">Component 4</Select.Option>
-                  <Select.Option value="Component 5">Component 5</Select.Option>
-                  <Select.Option value="Component 6">Component 6</Select.Option>
-                  <Select.Option value="Component 7">Component 7</Select.Option>
-                </Select>
-              </Form.Item>
-              <Divider className="lg:col-span-2" />
-
-              <Form.Item className="lg:col-span-2">
-                <div className="flex w-full justify-center mx-auto max-w-md space-x-3">
-                  <Button
-                    className="bg-main flex-grow"
-                    type="primary"
-                    htmlType="submit"
+                  <Select
+                    placeholder="Select a component"
+                    onChange={(e) =>
+                      setComponent(components?.find((data) => data.name === e))
+                    }
+                    allowClear
                   >
-                    Remove Component
-                  </Button>
-                </div>
-              </Form.Item>
+                    {components?.map((data, i) => (
+                      <Select.Option key={i} value={data?.name}>
+                        {data?.name}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              )}
+              {select && component && (
+                <>
+                  <Divider className="lg:col-span-2" />
+
+                  <Form.Item className="lg:col-span-2">
+                    <div className="flex w-full justify-center mx-auto max-w-md space-x-3">
+                      <Button
+                        className="bg-main flex-grow"
+                        type="primary"
+                        htmlType="submit"
+                      >
+                        Remove Component
+                      </Button>
+                    </div>
+                  </Form.Item>
+                </>
+              )}
             </Form>
           </div>
         </div>
